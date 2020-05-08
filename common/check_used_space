@@ -8,19 +8,33 @@
 # Authors:
 # - Cedric Serfon, <cedric.serfon@cern.ch>, 2014
 #
+
+'''
+Probe to check used space.
+'''
+
 import datetime
 import sys
-from rucio.client import Client
+import traceback
+from rucio.core import monitor
+from rucio.core.rse import list_rses, get_rse_usage
 
+# Exit statuses
 OK, WARNING, CRITICAL, UNKNOWN = 0, 1, 2, 3
-host = sys.argv[1]
-c = Client()
 
-for dict in c.get_rse_usage(host):
-    if dict['source'] == 'rucio':
-        if datetime.datetime.utcnow() - dict['updated_at'] < datetime.timedelta(hours=1):
-            print 'Used space :', dict['used']
-            sys.exit(OK)
-        else:
-            print 'Used space has not been refreshed for more than 1 hour. Last refresh on %s' % str(dict['updated_at'])
-            sys.exit(WARNING)
+if __name__ == "__main__":
+    try:
+        for rse in list_rses():
+            limits = get_rse_usage(rse['id'])
+            for dict in limits:
+                if dict['source'] == 'rucio':
+                    if datetime.datetime.utcnow() - dict['updated_at'] < datetime.timedelta(hours=1):
+                        print 'Used space :', dict['used']
+                        monitor.record_gauge(stat='judge.used_space.%s' %rse['rse'], value=dict['used'])
+                    else:
+                        monitor.record_gauge(stat='judge.used_space.%s' %rse['rse'], value=0)
+    except:
+        print (traceback.format_exc())
+        sys.exit(UNKNOWN)
+    sys.exit(OK)
+

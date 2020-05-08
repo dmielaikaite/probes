@@ -9,13 +9,13 @@
 # - Vincent Garonne, <vincent.garonne@cern.ch>, 2015
 
 '''
-Probe to check the min free space.
+Probe to check the free space.
 '''
 
 import sys
 import traceback
-
-from rucio.core.rse import list_rses, get_rse_limits, set_rse_usage
+from rucio.core import monitor
+from rucio.core.rse import list_rses, get_rse_usage
 
 # Exit statuses
 OK, WARNING, CRITICAL, UNKNOWN = 0, 1, 2, 3
@@ -23,14 +23,15 @@ OK, WARNING, CRITICAL, UNKNOWN = 0, 1, 2, 3
 
 if __name__ == "__main__":
     try:
-
         for rse in list_rses():
-            limits = get_rse_limits(rse=rse['rse'], rse_id=rse['id'])
-            min_free_space = limits.get('MinFreeSpace')
-            if min_free_space is not None:
-                # print rse['rse'], min_free_space
-                set_rse_usage(rse=rse['rse'], source='min_free_space', used=min_free_space, free=None)
+            limits = get_rse_usage(rse['id'])
+            for dict in limits:
+                if dict['source'] == 'rucio':
+                    free_space = int(dict['total']) - int(dict['used'])
+                monitor.record_gauge(stat='judge.free_space.%s' %rse['rse'], value=free_space)
+                print(rse['rse'],free_space)
     except:
         print (traceback.format_exc())
         sys.exit(UNKNOWN)
     sys.exit(OK)
+
