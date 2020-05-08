@@ -10,7 +10,7 @@
 # - Eric Vaandering, <ewv@fnal.gov>, 2019
 
 """
-Probe to check the backlog of stuck rules which have not moved per rse.
+Probe to check the number of expected files per rse.
 """
 
 import sys
